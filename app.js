@@ -16,7 +16,7 @@ function verificarContraseña(archivo, contraseña) {
       }
 
       // Si no hubo errores, la contraseña es correcta
-      resolve('Contraseña correcta');
+      resolve(`Contraseña correcta ${contraseña}`);
     });
   });
 }
