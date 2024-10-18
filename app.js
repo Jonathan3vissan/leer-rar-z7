@@ -4,7 +4,7 @@ const { exec } = require('child_process');
 function verificarContraseña(archivo, contraseña) {
   return new Promise((resolve, reject) => {
     // Comando para listar el contenido del archivo .rar
-    const comando = `7z l ${archivo} -p${contraseña}`;
+    const comando = `"C:\\Program Files\\7-Zip\\7z.exe" l "${archivo}" -p${contraseña}`;
 
     exec(comando, (error, stdout, stderr) => {
       if (error) {
@@ -22,8 +22,8 @@ function verificarContraseña(archivo, contraseña) {
 }
 
 // Uso de la función
-const archivo = 'path/to/tu/archivo.rar'; // Cambia esta ruta por la ruta de tu archivo
-const contraseña = 'tu_contraseña';       // Cambia esto por la contraseña que quieres verificar
+const archivo = 'C:\\Users\\Cuent\\Desktop\\este\\pruba_rar.rar'; // Cambia esta ruta por la ruta de tu archivo
+const contraseña = 'S1';       // Cambia esto por la contraseña que quieres verificar
 
 verificarContraseña(archivo, contraseña)
   .then(mensaje => {
