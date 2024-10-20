@@ -1,8 +1,6 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const characters = 'LISANDORlisnadro 0123456789'; // Conjunto de caracteres a usar en el generador de claves
-const maxLength = 14;      // Longitud máxima de las claves generadas
 
 // Función para verificar la contraseña intentando extraer un archivo específico dentro del RAR
 function verificarContraseña(archivo, archivoEspecifico, contraseña) {
@@ -13,7 +11,7 @@ function verificarContraseña(archivo, archivoEspecifico, contraseña) {
     }
 
     // Comando para extraer un archivo específico dentro del RAR
-    const comando = `"C:\\Program Files\\7-Zip\\7z.exe"`;
+    const comando = `"C:\\Program Files\\7-Zip\\7z.exe"`; // Asegúrate de que la ruta a 7z.exe sea correcta
     const args = ['x', archivo, `-p${contraseña}`, `-o${tempFolder}`, archivoEspecifico, '-y'];
 
     const proceso = spawn(comando, args, { shell: true });
@@ -34,8 +32,9 @@ function verificarContraseña(archivo, archivoEspecifico, contraseña) {
     });
 
     proceso.on('close', (code) => {
-      // Verificar si se extrajo algún archivo
-      if (output.includes('Everything is Ok') && output.includes('Files: 1')) {
+      // Verificar si se extrajo el archivo
+      const archivoExtraido = path.join(tempFolder, archivoEspecifico);
+      if (output.includes('Everything is Ok') && fs.existsSync(archivoExtraido)) {
         resolve(`Contraseña correcta: ${contraseña}`);
       } else {
         reject(new Error('Contraseña incorrecta o archivo no encontrado'));
@@ -60,6 +59,15 @@ function* generadorClaves(characters, maxLength) {
   }
 }
 
+// Función para guardar la contraseña y la dirección en un archivo .txt
+function guardarInformacion(archivo, contraseña) {
+  const contenido = `Archivo: ${archivo}\nContraseña: ${contraseña}\n`;
+  const rutaArchivo = path.join(__dirname, 'informacion.txt');
+  
+  fs.writeFileSync(rutaArchivo, contenido, { flag: 'a' }); // 'a' para agregar al final del archivo
+  console.log(`Información guardada en: ${rutaArchivo}`);
+}
+
 // Función para probar todas las combinaciones de claves generadas
 async function probarClaves(archivo, archivoEspecifico, generador) {
   for (let clave of generador) {
@@ -67,20 +75,29 @@ async function probarClaves(archivo, archivoEspecifico, generador) {
     try {
       const resultado = await verificarContraseña(archivo, archivoEspecifico, clave);
       console.log(resultado);
+      guardarInformacion(archivo, clave); // Guardar información al encontrar la contraseña correcta
       break; // Si se encuentra la contraseña correcta, detenemos el ciclo
     } catch (error) {
       if (error.message === 'Contraseña incorrecta o archivo no encontrado') {
-        console.log(`Contraseña incorrecta o archivo no encontrado: ${clave}`); // Mostramos las contraseñas incorrectas o archivos no encontrados
+        console.log(`Contraseña incorrecta o archivo no encontrado: ${clave}`); // Mostramos las contraseñas incorrectas
       } else {
-        console.error('Error al verificar la contraseña:', error.message); // Si ocurre otro error
+        console.error('Error al verificar la contraseña:', error.message);
       }
     }
   }
 }
 
 // Uso del generador y prueba de claves
-const archivo = 'C:\\Users\\Cuent\\Desktop\\este\\pruba_rar.rar'; // Ruta al archivo RAR
-const archivoEspecifico = '"abrir.rar\\fotos que cuidar\\cosas\\IMG_20190627_174619.jpg"';  // Especificar el archivo dentro del RAR
+const archivo = 'C:\\Users\\Cuent\\Desktop\\aca.rar';  // Ruta al archivo RAR
+const archivoEspecifico = 'aca\\dentro\\pudimos.txt';  // Ruta interna del archivo dentro del RAR
+const characters = 'Sa1'; // Conjunto de caracteres
+const maxLength = 3;      // Longitud máxima de la contraseña
 const generador = generadorClaves(characters, maxLength);
 
+// Iniciar el proceso de prueba de contraseñas
 probarClaves(archivo, archivoEspecifico, generador);
+
+
+
+//const archivoEspecifico = '"abrir.rar\\fotos que cuidar\\cosas\\IMG_20190627_174619.jpg"';  // Especificar el archivo dentro del RAR
+//const archivo = 'C:\\Users\\Cuent\\Desktop\\este\\pruba_rar.rar'; // Ruta al archivo RAR
