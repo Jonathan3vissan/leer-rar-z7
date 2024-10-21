@@ -88,11 +88,14 @@ async function probarClaves(archivo, archivoEspecifico, generador) {
 }
 
 // Uso del generador y prueba de claves
-const archivo = 'C:\\Users\\Cuent\\Desktop\\aca.rar';  // Ruta al archivo RAR
-const archivoEspecifico = 'aca\\dentro\\pudimos.txt';  // Ruta interna del archivo dentro del RAR
-const characters = 'Sa1'; // Conjunto de caracteres
-const maxLength = 3;      // Longitud máxima de la contraseña
+//const archivo = 'C:\\Users\\Cuent\\Desktop\\aca.rar';  // Ruta al archivo RAR
+//const archivoEspecifico = 'aca\\dentro\\pudimos.txt';  // Ruta interna del archivo dentro del RAR
+const characters = 'LISANDROlisandroBbVvTt 0123456789ggi'; // Conjunto de caracteres
+const maxLength = 16;      // Longitud máxima de la contraseña
 const generador = generadorClaves(characters, maxLength);
+
+const archivo = '"C:\\Users\\Cuent\\Desktop\\descompirmi\\abrir.rar"';  // Ruta al archivo RAR (con comillas dobles)
+const archivoEspecifico = '"abrir.rar\\fotos que cuidar\\cosas\\IMG_20190627_174619.jpg"';
 
 // Iniciar el proceso de prueba de contraseñas
 probarClaves(archivo, archivoEspecifico, generador);
