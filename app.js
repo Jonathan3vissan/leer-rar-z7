@@ -1,40 +1,39 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
-// Función para verificar la contraseña intentando extraer un archivo específico dentro del RAR
+// Función para verificar la contraseña
 function verificarContraseña(archivo, archivoEspecifico, contraseña) {
   return new Promise((resolve, reject) => {
-    const tempFolder = path.join(__dirname, 'temp_extract'); // Carpeta temporal para extraer el archivo
+    const tempFolder = path.join(__dirname, 'temp_extract');
     if (!fs.existsSync(tempFolder)) {
-      fs.mkdirSync(tempFolder); // Crear la carpeta si no existe
+      fs.mkdirSync(tempFolder); 
     }
 
-    // Comando para extraer un archivo específico dentro del RAR
-    const comando = `"C:\\Program Files\\7-Zip\\7z.exe"`; // Asegúrate de que la ruta a 7z.exe sea correcta
+    const comando = `"C:\\Program Files\\7-Zip\\7z.exe"`; 
     const args = ['x', archivo, `-p${contraseña}`, `-o${tempFolder}`, archivoEspecifico, '-y'];
+
+    console.log(`Ejecutando comando: ${comando} ${args.join(' ')}`);
 
     const proceso = spawn(comando, args, { shell: true });
 
-    let output = ''; // Para capturar el stdout completo
+    let output = '';
+    let errorOutput = '';
 
     proceso.stdout.on('data', (data) => {
-      output += data.toString(); // Acumulamos la salida completa
-      console.log(`stdout: ${data}`);
+      output += data.toString();
     });
 
     proceso.stderr.on('data', (data) => {
-      const errorMessage = data.toString();
-      console.error(`stderr: ${errorMessage}`);
-      if (errorMessage.includes('Wrong password') || errorMessage.includes('Contraseña incorrecta')) {
+      errorOutput += data.toString();
+      if (data.toString().includes('Wrong password') || data.toString().includes('Contraseña incorrecta')) {
         reject(new Error('Contraseña incorrecta'));
       }
     });
 
     proceso.on('close', (code) => {
-      // Verificar si se extrajo el archivo
-      const archivoExtraido = path.join(tempFolder, archivoEspecifico);
-      if (output.includes('Everything is Ok') && fs.existsSync(archivoExtraido)) {
+      if (output.includes('Everything is Ok')) {
         resolve(`Contraseña correcta: ${contraseña}`);
       } else {
         reject(new Error('Contraseña incorrecta o archivo no encontrado'));
@@ -43,64 +42,57 @@ function verificarContraseña(archivo, archivoEspecifico, contraseña) {
   });
 }
 
-// Generador de claves
+// Función generadora de contraseñas
 function* generadorClaves(characters, maxLength) {
-  function* generate(currentKey, currentLength) {
-    if (currentLength === 0) {
-      yield currentKey;
-      return;
-    }
-    for (let i = 0; i < characters.length; i++) {
-      yield* generate(currentKey + characters[i], currentLength - 1);
-    }
-  }
-  for (let length = 1; length <= maxLength; length++) {
-    yield* generate('', length);
-  }
-}
-
-// Función para guardar la contraseña y la dirección en un archivo .txt
-function guardarInformacion(archivo, contraseña) {
-  const contenido = `Archivo: ${archivo}\nContraseña: ${contraseña}\n`;
-  const rutaArchivo = path.join(__dirname, 'informacion.txt');
-  
-  fs.writeFileSync(rutaArchivo, contenido, { flag: 'a' }); // 'a' para agregar al final del archivo
-  console.log(`Información guardada en: ${rutaArchivo}`);
-}
-
-// Función para probar todas las combinaciones de claves generadas
-async function probarClaves(archivo, archivoEspecifico, generador) {
-  for (let clave of generador) {
-    console.log(`Intentando con la contraseña: ${clave}`); // Mostrar la contraseña que se está probando
-    try {
-      const resultado = await verificarContraseña(archivo, archivoEspecifico, clave);
-      console.log(resultado);
-      guardarInformacion(archivo, clave); // Guardar información al encontrar la contraseña correcta
-      break; // Si se encuentra la contraseña correcta, detenemos el ciclo
-    } catch (error) {
-      if (error.message === 'Contraseña incorrecta o archivo no encontrado') {
-        console.log(`Contraseña incorrecta o archivo no encontrado: ${clave}`); // Mostramos las contraseñas incorrectas
-      } else {
-        console.error('Error al verificar la contraseña:', error.message);
+  function* helper(prefix, chars, length) {
+    if (length === 0) {
+      yield prefix;
+    } else {
+      for (let i = 0; i < chars.length; i++) {
+        yield* helper(prefix + chars[i], chars, length - 1);
       }
     }
   }
+
+  for (let length = 1; length <= maxLength; length++) {
+    yield* helper('', characters, length);
+  }
 }
 
-// Uso del generador y prueba de claves
-//const archivo = 'C:\\Users\\Cuent\\Desktop\\aca.rar';  // Ruta al archivo RAR
-//const archivoEspecifico = 'aca\\dentro\\pudimos.txt';  // Ruta interna del archivo dentro del RAR
-const characters = 'LISANDROlisandroBbVvTt 0123456789ggi'; // Conjunto de caracteres
-const maxLength = 16;      // Longitud máxima de la contraseña
+// Función para probar contraseñas en paralelo
+async function probarClavesEnParalelo(archivo, archivoEspecifico, generador) {
+  const tareas = [];
+  for (let clave of generador) {
+    console.log(`Intentando con la contraseña: ${clave}`);
+
+    const tarea = verificarContraseña(archivo, archivoEspecifico, clave)
+      .then(resultado => {
+        console.log(resultado);
+        return true;
+      })
+      .catch(error => {
+        console.log(`Contraseña incorrecta: ${clave}`);
+        return false;
+      });
+
+    tareas.push(tarea);
+    if (tareas.length >= os.cpus().length) {
+      const resultados = await Promise.all(tareas);
+      if (resultados.some(r => r)) {
+        console.log('Contraseña encontrada, deteniendo el proceso.');
+        break;
+      }
+      tareas.length = 0; 
+    }
+  }
+}
+
+// Iniciar prueba de claves
+const archivo = 'C:\\Users\\Cuent\\Desktop\\aca.rar';
+const archivoEspecifico = 'aca\\dentro\\pudimos.txt'; 
+
+const characters = 'Sal1';  // Caracteres posibles para la contraseña
+const maxLength = 3;  // Longitud máxima de la contraseña
 const generador = generadorClaves(characters, maxLength);
 
-const archivo = '"C:\\Users\\Cuent\\Desktop\\descompirmi\\abrir.rar"';  // Ruta al archivo RAR (con comillas dobles)
-const archivoEspecifico = '"abrir.rar\\fotos que cuidar\\cosas\\IMG_20190627_174619.jpg"';
-
-// Iniciar el proceso de prueba de contraseñas
-probarClaves(archivo, archivoEspecifico, generador);
-
-
-
-//const archivoEspecifico = '"abrir.rar\\fotos que cuidar\\cosas\\IMG_20190627_174619.jpg"';  // Especificar el archivo dentro del RAR
-//const archivo = 'C:\\Users\\Cuent\\Desktop\\este\\pruba_rar.rar'; // Ruta al archivo RAR
+probarClavesEnParalelo(archivo, archivoEspecifico, generador);
